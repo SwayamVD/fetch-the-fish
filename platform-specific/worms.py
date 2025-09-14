@@ -1,3 +1,8 @@
+# once runned it will create a new csv file containing requested data. 
+# feel free to work on the output. 
+
+
+
 import requests
 import pandas as pd
 import os
