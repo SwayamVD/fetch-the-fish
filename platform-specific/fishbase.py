@@ -1,46 +1,47 @@
 import requests
 from bs4 import BeautifulSoup
-import pandas as pd
+from collections import defaultdict
 
-# URL for POST request
-url = "https://www.fishbase.se/ComNames/CommonNameSearchList.php"
+def fetch_fishbase_structured_by_class(species_name):
+    url = f"https://www.fishbase.se/summary/{species_name}.html"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching URL: {e}")
+        return
 
-# POST data payload
-payload = {
-    "crit1_fieldname": "COMNAMES.ComName",
-    "lang": "English",
-    "resultPage": "1",
-    "crit1_fieldtype": "CHAR",
-    "language": "All",
-    "crit1_operator": "EQUAL",
-    "CommonName": "surmai"
-}
+    soup = BeautifulSoup(response.content, 'html.parser')
+    main_content = soup.find('div', id='ss-main')
 
-# Send POST request
-response = requests.post(url, data=payload)
-response.raise_for_status()
+    if not main_content:
+        print("Could not find the main content div.")
+        return
 
-# Parse HTML
-soup = BeautifulSoup(response.text, "html.parser")
+    sections = defaultdict(list)
+    
+    headings = main_content.find_all('h1', class_='slabel')
 
-# Find the table by id
-table = soup.find("table", {"id": "table_filter"})
-if not table:
-    print("No table found")
-    exit()
+    for heading in headings:
+        current_section = heading.get_text(strip=True)
+        # Iterate through all siblings after heading
+        for sibling in heading.find_next_siblings():
+            # Stop if the next heading is found
+            if sibling.name == 'h1' and 'slabel' in sibling.get('class', []):
+                break
+            # Check for p tags or div.smallSpace
+            if (sibling.name == 'p' or (sibling.name == 'div' and 'smallSpace' in sibling.get('class', []))) \
+                and sibling.get_text(strip=True):
+                sections[current_section].append(sibling.get_text(strip=True))
 
-# Extract headers
-headers = [th.get_text(strip=True) for th in table.find("thead").find_all("th")]
+    # Optional: print nicely
+    for section_title, paragraphs in sections.items():
+        print(f"\n{section_title.upper()}")
+        for para in paragraphs:
+            print(para)
 
-# Extract rows
-rows = []
-for tr in table.find("tbody").find_all("tr"):
-    cols = [td.get_text(strip=True) for td in tr.find_all("td")]
-    rows.append(cols)
+    return sections
 
-# Convert to DataFrame
-df = pd.DataFrame(rows, columns=headers)
-
-# Display and save
-print(df)
-df.to_csv("fishbase_comnames_surmai.csv", index=False)
+# Example usage
+species_name = 'Acanthurus gahhm'
+data = fetch_fishbase_structured_by_class(species_name)
