@@ -3,19 +3,16 @@ import pandas as pd
 import os
 
 BASE_URL = "https://www.marinespecies.org/rest"
-OUTPUT_FILE = "marine_species_full.csv"
+OUTPUT_FILE = "marine_species.csv"
 
 def get_species_info(species_name):
     """Search for species and return AphiaID + details."""
-    # First: search by species name
     search_url = f"{BASE_URL}/AphiaRecordsByMatchNames?scientificnames[]={species_name}&marine_only=true"
     response = requests.get(search_url)
     
     if response.status_code == 200 and response.json():
         record = response.json()[0][0]
         aphia_id = record.get("AphiaID")
-        
-        # Now: fetch full details by AphiaID
         detail_url = f"{BASE_URL}/AphiaRecordByAphiaID/{aphia_id}"
         detail_response = requests.get(detail_url)
         
@@ -41,7 +38,7 @@ def get_species_info(species_name):
             }
             return species_data
     
-    print(f"❌ No data found for {species_name}")
+    print(f"No data found for {species_name}")
     return None
 
 def save_species_info(species_data):
@@ -60,7 +57,7 @@ def save_species_info(species_data):
         combined = new_df
     
     combined.to_csv(OUTPUT_FILE, index=False)
-    print(f"✅ Saved/updated {species_data['ScientificName']} in {OUTPUT_FILE}")
+    print(f"Saved/updated {species_data['ScientificName']} in {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     species_list = [
